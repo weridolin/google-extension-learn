@@ -1,0 +1,10 @@
+
+{
+  "name": "mail.helper",
+  "description": "a mail helper that receive message",
+  "path": "D:\\code\\python\\google-extension-learn\\mail-receiver\\native\\dist\\native-messaging-example-host.exe",
+  "type": "stdio",
+  "allowed_origins": [
+    "chrome-extension://knldjmfmopnpolahpmmgbagdohdnhkik/"
+  ]
+}
