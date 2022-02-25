@@ -11,6 +11,11 @@ port.onMessage.addListener(function(msg) {
       document.querySelector('#host').value= msg.data.config.mail_server
       document.querySelector("#mail_count").value=msg.data.config.count
       document.querySelector("#mail_interval").value=msg.data.config.interval
+      if (msg.data.config.protocol=="pop3"){
+        document.querySelector("#no_use_pop3").checked= true
+      }else{
+        document.querySelector("#no_use_pop3").checked= false
+      }
     }else{
       state = 0
       update(state=0)
@@ -44,8 +49,12 @@ function checkInputIsValid(){
   mail_count = document.querySelector('#mail_count').value
   mail_pwd = document.querySelector('#mail_pwd').value
   mail_interval = document.querySelector('#mail_interval').value  
-  // mail_protocol = document.querySelector('#mail_interval').value 
-  
+  protocol = document.querySelector('#no_use_pop3').checked?"pop3":"imap"
+
+  if (protocol=="imap"){
+    alert("暂时不支持imap协议")
+    return
+  } 
   var reg = /^([a-zA-Z]|[0-9])(\w|\-)+@[a-zA-Z0-9]+\.([a-zA-Z]{2,4})$/;
   if(! reg.test(mail_count)){
     alert("邮箱格式不正确");
@@ -57,7 +66,8 @@ function checkInputIsValid(){
         "host":mail_host,
         "count":mail_count,
         "pwd":mail_pwd,
-        "interval":mail_interval
+        "interval":mail_interval,
+        "protocol":protocol
       }
     })
     alert("提交配置成功!")

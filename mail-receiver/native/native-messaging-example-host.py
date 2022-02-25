@@ -12,7 +12,6 @@ from stream import Message
 settings={
     "count" : "359066432@qq.com",
     # password = "你的邮箱授权码"
-    "password" : "omhaidmyktahbgje",
     "mail_server" : "pop.qq.com",
 }
 
@@ -45,7 +44,6 @@ def main():
                         datefmt="%Y-%d-%m %H:%M:%S")
 
     # 3.与chrome extension进行通信
-    deal_count = 1
     while True:
         try:
             message:Message = Message.from_stdin()
