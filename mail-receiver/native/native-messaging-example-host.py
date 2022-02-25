@@ -5,8 +5,6 @@ chrome extension messaging with local application.
 
 import time
 import sys
-import struct
-import json
 import logging
 from receiver import MailReceiver
 from stream import Message
@@ -14,11 +12,22 @@ from stream import Message
 settings={
     "count" : "359066432@qq.com",
     # password = "你的邮箱授权码"
+    "password" : "omhaidmyktahbgje",
     "mail_server" : "pop.qq.com",
 }
 
-receiver = MailReceiver(2,False)
+receiver = MailReceiver(daemon=False)
 receiver.update_settings(**settings)
+
+def query_app_state():
+    msg = Message(
+        type="query",
+        data= {
+            "config":MailReceiver._config,
+            "context":MailReceiver.context
+        }
+    )
+    msg.send()
 
 
 # 主函数入口
@@ -53,9 +62,16 @@ def handle_message(message:Message):
     elif message.type =="start":
         logging.info(">>> start mail thread")
         receiver.start()
+        # test.start()
     elif message.type =="setting":
+        logging.info(f">>> update mail receiver {message.data}")
+        receiver._config.update(message.data)
+    elif message.type =="stop":
+        logging.info("stop mail thread")
         receiver.stop()
-
+    elif message.type =="query":
+        ### query native app state
+        return query_app_state()
 
 if __name__ == "__main__":
     main()

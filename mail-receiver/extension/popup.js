@@ -1,17 +1,38 @@
 var port = chrome.runtime.connect();
-port.onMessage.addListener(function(msg) {
-  console.log("get message from background js >>>",msg)
-});
 var state = 0 // 1 start  0 stop
 
-//查询是否已经运行
+port.onMessage.addListener(function(msg) {
+  console.log("get message from background js >>>",msg)
+  if (msg.type=="query"){
+    // check if is already execute
+    if (msg.data.context.state==1){
+      state = 1
+      update(state=1)
+    }else{
+      state = 0
+      update(state=0)
+    }
+  }
+});
+
+//每次打开查询是否已经运行
 if (port){
-  port.postMessage({
+  res = port.postMessage({
     "type":"query",
     "data":{
       "key":"state",
     }
   })
+}
+
+function update(state){
+  if(state == 0){
+    document.querySelector('#start').innerText="启动"
+    document.querySelector("#start").style.background="#1c87c9"
+  }else{
+    document.querySelector('#start').innerText="停止"
+    document.querySelector("#start").style.background="#c91c1c"
+  }
 }
 
 function checkInputIsValid(){
@@ -54,18 +75,16 @@ function submitSettings(){
 function startSubmit(){
   console.log(">>>>> start receiving")
   if (state==0){
-    document.querySelector('#start').innerText="停止"
-    document.querySelector("#start").style.background="#c91c1c"
     if (port){
       port.postMessage({
         "type":"start",
         "data":{}
       })}
       state = 1
+      update(state=1)
     }else{
       state = 0 
-      document.querySelector('#start').innerText="启动"
-      document.querySelector("#start").style.background="#1c87c9"
+      update(state=0)
       if (port){
         port.postMessage({
           "type":"stop",

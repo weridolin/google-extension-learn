@@ -1,7 +1,6 @@
-from asyncio.log import logger
-from email import message
+from doctest import FAIL_FAST
+import time
 import logging
-from threading import Timer
 import threading
 from email.utils import parseaddr
 from email.header import decode_header
@@ -11,25 +10,39 @@ from queue import Queue
 import json
 from stream import Message
 
-class MailReceiver(Timer):
+class MailReceiver(threading.Timer):
     cache = Queue()
 
     _config = {
         "count":None,
         "password":None,
         "mail_server":None,
+        "interval":10,
+        "protocol":"pop3"
+    }
+    context = {
+        "state" : 0 # 1: running/ 0 :stop
     }
     new_index = 0 # 最新一封邮件的索引，从改索引后的邮件都为新邮件
+
+    # def __init__(self,daemon,*args,**kwargs) -> None:
+    #     super().__init__(*args,**kwargs)
+    #     self.daemon = daemon
+    #     self.stop_flag = threading.Event()
+    #     self.name="receiver timer"
+    #     self.__client = None
     
-    def __init__(self, interval: float,daemon ,args=None, kwargs=None) -> None:
+    def __init__(self, daemon ,interval: float=10,args=None, kwargs=None) -> None:
         super().__init__(interval, self._receive, args, kwargs)
         self.daemon = daemon # set backend thread
         self.stop_flag = threading.Event()
         self.name="receiver timer"
         self.__client = None
 
+
     def update_settings(self,**kwargs):
         MailReceiver._config.update(**kwargs)
+        self.interval = kwargs.get("interval",10)
 
     def _connect(self):
         assert MailReceiver._config["count"]!= None,"mail count cannot be None"
@@ -44,7 +57,6 @@ class MailReceiver(Timer):
         # 接收最新收到的邮件
         # new_index
         _,mails,_ = self.__client.list()
-        print(len(mails),MailReceiver.new_index)
         _mail_list = []
         if  len(mails) > MailReceiver.new_index:
             # 获取 MailReceiver.new_index 后的每一封邮件,同时更新 MailReceiver.new_index
@@ -56,10 +68,10 @@ class MailReceiver(Timer):
             _, lines, _ = self.__client.retr(MailReceiver.new_index)
             _mail_list.append(lines)     
         res = self._parse(_mail_list)
-        msg:Message =Message(type="log",data=f"init mail count:{MailReceiver.new_index}")
-        msg.send()
-        # message = Message(type="log",data=res)
-        # message.send()
+        # msg:Message =Message(type="log",data=f"init mail count:{MailReceiver.new_index}")
+        # msg.send()
+        message = Message(type="result",data=res)
+        message.send()
         
     def _parse(self,messages):
         _result = []
@@ -73,7 +85,7 @@ class MailReceiver(Timer):
                     "to":to,
                     "subject":subject
                 },
-                "body":"self._parse_body(msg=_msg)"
+                "body":self._parse_body(msg=_msg)
             })
         return _result
 
@@ -120,6 +132,7 @@ class MailReceiver(Timer):
     def run(self) -> None: 
         # 获取邮箱列表当前的邮件数目
         self._connect()
+        MailReceiver.context.update({"state":1})
         MailReceiver.new_index = self._get_mails_count()
         msg:Message =Message(type="log",data=f"init mail count:{MailReceiver.new_index}")
         msg.send()
@@ -129,6 +142,12 @@ class MailReceiver(Timer):
             try:
                 super().run()
                 self.finished.clear()
+                for _ in range(MailReceiver._config["interval"]*10):
+                    # TODO 间隔期间发送停止可以停掉
+                    if self.stop_flag.is_set():
+                        logging.info("stop mail thread in interval")
+                        break
+                    time.sleep(0.1)
             except KeyboardInterrupt:
                 break
             except Exception as exc:
@@ -136,6 +155,7 @@ class MailReceiver(Timer):
     
     def stop(self):
         self.stop_flag.set()
+        MailReceiver.context.update({"state":0})
         self.__client.quit()
 
 def check_charset(msg):
@@ -156,13 +176,23 @@ def decode_str(s):
         value = value.decode(charset)
     return value
 
+import time
+class TestThread(threading.Thread):
+
+    def run(self) -> None:
+        while True:
+            msg:Message = Message(data="test msg")
+            msg.send()
+            time.sleep(1)
+
 if __name__ == "__main__":
     settings={
         "count" : "359066432@qq.com",
         # password = "你的邮箱授权码"
         "mail_server" : "pop.qq.com",
+        "password" : "omhaidmyktahbgje"
     }
 
-    t = MailReceiver(2,False)
+    t = MailReceiver(interval=10,daemon=False)
     t.update_settings(**settings)
     t.start()
