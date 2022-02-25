@@ -3,7 +3,7 @@ import json
 import struct
 from typing import Any
 from dataclasses_json import DataClassJsonMixin
-from dataclasses import dataclass,field
+from dataclasses import dataclass
 import sys
 import logging
 
@@ -37,12 +37,8 @@ class Message(DataClassJsonMixin):
         _header = Message.pack_header(message=message)
         # send header
         sys.stdout.buffer.write(_header)
-        logging.info(">>> flush header")
-        sys.stdout.flush()
-        # send message TODO stdout.flush in thread raise os error ???
-        logging.info(">>> flush message")
         sys.stdout.buffer.write(message)
-        sys.stdout.flush()        
+        sys.stdout.flush()   
 
     @classmethod
     def from_stdin(cls):
@@ -52,14 +48,16 @@ class Message(DataClassJsonMixin):
             return None
         # Unpack message length as 4 byte integer, tuple = struct.unpack(fmt, buffer).
         msg_length = struct.unpack("I", msg_header)[0]
-        logging.info(f"获取到头部,长度为:{msg_length}")
         # read msg-body (bytes)
         msg = sys.stdin.buffer.read(msg_length)   
         assert isinstance(msg,bytes),"stdin message must be bytes"
         _msg = msg.decode("utf-8")
-        logging.info(f"获取到消息:{_msg}")
+        if "ping" not in _msg:
+            logging.info(f"获取到消息:{_msg}")
         try:
             return cls.from_json(_msg)
         except Exception:
             logging.error("not a json format message")
             return None
+
+        

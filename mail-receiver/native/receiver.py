@@ -1,3 +1,5 @@
+from cmath import log
+from datetime import datetime
 from doctest import FAIL_FAST
 import time
 import logging
@@ -8,7 +10,7 @@ import poplib
 from email.parser import Parser
 from queue import Queue
 from stream import Message
-
+import sys
 class MailReceiver(threading.Timer):
     cache = Queue()
 
@@ -44,14 +46,16 @@ class MailReceiver(threading.Timer):
         self.interval = kwargs.get("interval",10)
 
     def _connect(self):
-        assert MailReceiver._config["count"]!= None,"mail count cannot be None"
-        assert MailReceiver._config["password"]!=None,"mail authentication code cannot be None"
-        assert MailReceiver._config["mail_server"]!=None,"mail server cannot be None"
-        self.__client = poplib.POP3(MailReceiver._config["mail_server"])
-        # user account authentication
-        self.__client.user(MailReceiver._config["count"])
-        self.__client.pass_(MailReceiver._config["password"])
-
+        try:
+            assert MailReceiver._config["count"]!= None,"mail count cannot be None"
+            assert MailReceiver._config["password"]!=None,"mail authentication code cannot be None"
+            assert MailReceiver._config["mail_server"]!=None,"mail server cannot be None"
+            self.__client = poplib.POP3(MailReceiver._config["mail_server"])
+            # user account authentication
+            self.__client.user(MailReceiver._config["count"])
+            self.__client.pass_(MailReceiver._config["password"])
+        except Exception as exc:
+            logging.error("connect to mail server error",exc_info=True)
     def _receive(self):
         # 接收最新收到的邮件
         # new_index
@@ -149,7 +153,7 @@ class MailReceiver(threading.Timer):
                     # TODO 间隔期间发送停止可以停掉
                     if self.stop_flag.is_set():
                         logging.info("stop mail thread in interval")
-                        break
+                        return
                     time.sleep(0.1)
             except KeyboardInterrupt:
                 break
@@ -161,6 +165,26 @@ class MailReceiver(threading.Timer):
         MailReceiver.context.update({"state":0})
         self.__client.quit()
 
+class MessageReceiver(threading.Thread):
+    msg_queue = Queue()
+    def __init__(self,*args,**kwargs) -> None:
+        super().__init__(*args,**kwargs)
+        self.stop_flag = threading.Event()
+        self.daemon=True
+
+    def run(self):
+        self.stop_flag.clear()       
+        while not self.stop_flag.is_set():
+            try:
+                message:Message = Message.from_stdin()
+                if message:
+                    self.msg_queue.put_nowait(message)
+            except Exception as e:
+                import traceback
+                logging.error(f"{e},trace:{traceback.format_exc()}")
+
+    def stop(self):
+        self.stop_flag.set()
 def check_charset(msg):
     # get charset from message object.
     charset = msg.get_charset()
@@ -179,32 +203,38 @@ def decode_str(s):
         value = value.decode(charset)
     return value
 
-# import time
-# class PingTimer(threading.Timer):
-#     ## 增加一个 daemon,并做成循环定时器
-#     def __init__(self, interval: float, function,daemon ,args=None, kwargs=None) -> None:
-#         super().__init__(interval, function, args, kwargs)
-#         self.daemon = daemon
-#         self.stop_flag = threading.Event()
-#         self.name="ping定时器"
+import time
+class PingCheck(threading.Timer):
+    last_ping_time = None
+    ## 定时检测心跳的发送情况，超过一定时间段没接收到,则自动退出程序
+    def __init__(self, interval: float, daemon ,args=None, kwargs=None) -> None:
+        super().__init__(interval,self.check_last_ping_time, args, kwargs)
+        self.daemon = daemon
+        self.stop_flag = threading.Event()
+        self.name="ping定时器"
 
-#     def ping(self):
-#         ping_msg:Message = Message(type="ping",data={})
-#         ping_msg.send()
+    def check_last_ping_time(self):
+        # logging.info(F">>> ping 检测 {(datetime.now() - PingCheck.last_ping_time).total_seconds()}")
+        if (datetime.now() - PingCheck.last_ping_time).total_seconds() > 10:
+            # 超过10秒没更新PING状态，直接断开
+            logging.info(">>> 超过10秒没更新ping状态,自动退出app")
+            msg:Message =Message(type="stop",data={})
+            MessageReceiver.msg_queue.put_nowait(msg)
 
-#     def run(self) -> None:        
-#         self.stop_flag.clear()
-#         while not self.stop_flag.is_set():
-#             try:
-#                 super().run()
-#                 self.finished.clear()
-#             except KeyboardInterrupt:
-#                 break
-#             except Exception as exc:
-#                 logging.error(f"定时ping线程:{exc}")
+    def run(self) -> None:        
+        self.stop_flag.clear()
+        PingCheck.last_ping_time = datetime.now()
+        while not self.stop_flag.is_set():
+            try:
+                super().run()
+                self.finished.clear()
+            except KeyboardInterrupt:
+                break
+            except Exception as exc:
+                logging.error(f"定时ping线程:{exc}",exc_info=True)
     
-#     def stop(self):
-#         self.stop_flag.set()
+    def stop(self):
+        self.stop_flag.set()
 
 if __name__ == "__main__":
     settings={

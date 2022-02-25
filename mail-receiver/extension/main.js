@@ -6,7 +6,9 @@ function killNativeApp(appName){
 }
 
 function sendNativeMessage(message) {
-  console.log("send message to native app",message)
+  if (message.type!="ping"){
+    console.log("send message to native app",message)
+  }
   native_port.postMessage(message);
 }
 
@@ -35,10 +37,16 @@ function connect() {
   native_port = chrome.runtime.connectNative(hostName); //回去查找注册表中的 mail.helper项目
   native_port.onMessage.addListener(onNativeMessage);
   native_port.onDisconnect.addListener(onDisconnected);
-  sendNativeMessage({
-    "type":"ping",
-    "data":{}
-  })
+
+  // start ping native app per 1s
+  setInterval(function() {
+    // console.log(">>>> send ping")
+    sendNativeMessage({
+      "type":"ping",
+      "data":{}
+    })
+  }, 1000);
+ 
 }
 
 function handleMessage(msg){
@@ -55,7 +63,6 @@ function handleMessage(msg){
   }
 }
 
-killNativeApp("c4")
 connect()
 
 chrome.runtime.onConnect.addListener(function(port) {
