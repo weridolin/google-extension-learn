@@ -7,7 +7,6 @@ from email.header import decode_header
 import poplib
 from email.parser import Parser
 from queue import Queue
-import json
 from stream import Message
 
 class MailReceiver(threading.Timer):
@@ -64,9 +63,13 @@ class MailReceiver(threading.Timer):
                 MailReceiver.new_index +=1
                 _, lines, _ = self.__client.retr(MailReceiver.new_index)
                 _mail_list.append(lines)
-        elif len(mails) == MailReceiver.new_index:
-            _, lines, _ = self.__client.retr(MailReceiver.new_index)
-            _mail_list.append(lines)     
+        # elif len(mails) == MailReceiver.new_index:
+        #     _, lines, _ = self.__client.retr(MailReceiver.new_index)
+        #     _mail_list.append(lines)     
+        else:
+            msg:Message = Message(data="no new mail")
+            msg.send()
+            return
         res = self._parse(_mail_list)
         # msg:Message =Message(type="log",data=f"init mail count:{MailReceiver.new_index}")
         # msg.send()
@@ -176,14 +179,32 @@ def decode_str(s):
         value = value.decode(charset)
     return value
 
-import time
-class TestThread(threading.Thread):
+# import time
+# class PingTimer(threading.Timer):
+#     ## 增加一个 daemon,并做成循环定时器
+#     def __init__(self, interval: float, function,daemon ,args=None, kwargs=None) -> None:
+#         super().__init__(interval, function, args, kwargs)
+#         self.daemon = daemon
+#         self.stop_flag = threading.Event()
+#         self.name="ping定时器"
 
-    def run(self) -> None:
-        while True:
-            msg:Message = Message(data="test msg")
-            msg.send()
-            time.sleep(1)
+#     def ping(self):
+#         ping_msg:Message = Message(type="ping",data={})
+#         ping_msg.send()
+
+#     def run(self) -> None:        
+#         self.stop_flag.clear()
+#         while not self.stop_flag.is_set():
+#             try:
+#                 super().run()
+#                 self.finished.clear()
+#             except KeyboardInterrupt:
+#                 break
+#             except Exception as exc:
+#                 logging.error(f"定时ping线程:{exc}")
+    
+#     def stop(self):
+#         self.stop_flag.set()
 
 if __name__ == "__main__":
     settings={

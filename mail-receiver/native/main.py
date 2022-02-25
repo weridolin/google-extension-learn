@@ -56,7 +56,7 @@ def main():
 # Chrome extension to local application：与chrome-extension进行通信的class
 def handle_message(message:Message):
     if message.type =="log":
-        logging.info(">>> log")
+        logging.info(f">>> log:{message.to_json()}")
     elif message.type =="start":
         logging.info(">>> start mail thread")
         receiver.start()

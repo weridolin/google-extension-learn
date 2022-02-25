@@ -1,6 +1,3 @@
-// Copyright 2013 The Chromium Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style license that can be
-// found in the LICENSE file.
 
 var native_port = null; //communicate with native app
 var popup_port = null //communicate with popup menu
@@ -16,7 +13,7 @@ function sendNativeMessage(message) {
 function onNativeMessage(message) {
   try {
     _ = JSON.stringify(message)
-    console.log('get message from native app',message,message.type)
+    console.log('get message from native app',message)
     if (message.type=="query"){
       console.log("send message to popup")
       popup_port.postMessage(message)
@@ -35,7 +32,6 @@ function onDisconnected() {
 
 function connect() {
   var hostName = "mail.helper";
-  console.log(">>",hostName)
   native_port = chrome.runtime.connectNative(hostName); //回去查找注册表中的 mail.helper项目
   native_port.onMessage.addListener(onNativeMessage);
   native_port.onDisconnect.addListener(onDisconnected);
@@ -58,6 +54,7 @@ function handleMessage(msg){
     console.log(">>> get a invalid format msg",msg,error)
   }
 }
+
 killNativeApp("c4")
 connect()
 
@@ -71,3 +68,16 @@ chrome.runtime.onConnect.addListener(function(port) {
   });
   
 });
+
+// chrome.processes.onCreated.addListener(
+//   function(){
+//     console.log(">>> google browser is created")
+//   }
+// )
+
+// chrome.processes.onExited.addListener(
+//   function(){
+//     console.log(">>> google browser is exit")
+//   }
+// )
+
