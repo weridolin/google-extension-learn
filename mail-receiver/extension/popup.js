@@ -8,6 +8,9 @@ port.onMessage.addListener(function(msg) {
     if (msg.data.context.state==1){
       state = 1
       update(state=1)
+      document.querySelector('#host').value= msg.data.config.mail_server
+      document.querySelector("#mail_count").value=msg.data.config.count
+      document.querySelector("#mail_interval").value=msg.data.config.interval
     }else{
       state = 0
       update(state=0)
@@ -41,6 +44,8 @@ function checkInputIsValid(){
   mail_count = document.querySelector('#mail_count').value
   mail_pwd = document.querySelector('#mail_pwd').value
   mail_interval = document.querySelector('#mail_interval').value  
+  // mail_protocol = document.querySelector('#mail_interval').value 
+  
   var reg = /^([a-zA-Z]|[0-9])(\w|\-)+@[a-zA-Z0-9]+\.([a-zA-Z]{2,4})$/;
   if(! reg.test(mail_count)){
     alert("邮箱格式不正确");
