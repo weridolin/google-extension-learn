@@ -190,7 +190,6 @@ if __name__ == "__main__":
         "count" : "359066432@qq.com",
         # password = "你的邮箱授权码"
         "mail_server" : "pop.qq.com",
-        "password" : "omhaidmyktahbgje"
     }
 
     t = MailReceiver(interval=10,daemon=False)
